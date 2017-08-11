@@ -772,15 +772,16 @@ def object_id(s):
 def anomaly_detect(record):
     # Check for STD create times that are before the FN create times
     if record['fncnt'] > 0:
-        #          print record['si']['crtime'].dt, record['fn', 0]['crtime'].dt
-
         try:
-            if (record['fn', 0]['crtime'].dt == 0) or (record['si']['crtime'].dt < record['fn', 0]['crtime'].dt):
+        #     if (record['fn', 0]['crtime'].dt == 0) or (record['si']['crtime'].dt < record['fn', 0]['crtime'].dt):
+        #         record['stf-fn-shift'] = True
+        # # This is a kludge - there seem to be some legit files that trigger an exception in the above. Needs to be
+        # # investigated
+            if record[u'fn', 0][u'crtime'].dt != record[u'si'][u'crtime'].dt:
                 record['stf-fn-shift'] = True
-        # This is a kludge - there seem to be some legit files that trigger an exception in the above. Needs to be
-        # investigated
         except:
             record['stf-fn-shift'] = True
+            raise
 
         # Check for STD create times with a nanosecond value of '0'
         if record['fn', 0]['crtime'].dt != 0:
