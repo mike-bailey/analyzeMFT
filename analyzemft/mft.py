@@ -246,7 +246,7 @@ def mft_to_csv(record, ret_header, options):
                       'FN Info Entry date', 'Standard Information', 'Attribute List', 'Filename',
                       'Object ID', 'Volume Name', 'Volume Info', 'Data', 'Index Root',
                       'Index Allocation', 'Bitmap', 'Reparse Point', 'EA Information', 'EA',
-                      'Property Set', 'Logged Utility Stream', 'Log/Notes', 'STF FN Shift', 'uSec Zero', 'ADS']
+                      'Property Set', 'Logged Utility Stream', 'Log/Notes', 'STF FN Shift', 'uSec Zero', 'ADS', 'likely_copy', 'likely_volmove']
         return csv_string
 
     if 'baad' in record:
@@ -378,6 +378,16 @@ def mft_to_csv(record, ret_header, options):
         csv_string.append('Y')
     else:
         csv_string.append('N')
+
+    if u'likely_copy' in record:
+        csv_string.append(u'Y')
+    else:
+        csv_string.append(u'N')
+
+    if u'likely_volmove' in record:
+        csv_string.append(u'Y')
+    else:
+        csv_string.append(u'N')
 
     return csv_string
 
@@ -772,18 +782,31 @@ def object_id(s):
 def anomaly_detect(record):
     # Check for STD create times that are before the FN create times
     if record['fncnt'] > 0:
+        fn_birth = record[u'fn', 0][u'crtime'].dt 
+        fn_modify = record[u'fn', 0][u'mtime'].dt
+        fn_access = record[u'fn', 0][u'atime'].dt
+        si_birth = record[u'si', 0][u'crtime'].dt 
+        si_modify = record[u'si', 0][u'mtime'].dt
+        si_access = record[u'si', 0][u'atime'].dt
         try:
         #     if (record['fn', 0]['crtime'].dt == 0) or (record['si']['crtime'].dt < record['fn', 0]['crtime'].dt):
         #         record['stf-fn-shift'] = True
         # # This is a kludge - there seem to be some legit files that trigger an exception in the above. Needs to be
         # # investigated
-            if record[u'fn', 0][u'crtime'].dt != record[u'si'][u'crtime'].dt:
+            if fn_birth != si_birth:
                 record['stf-fn-shift'] = True
         except:
             record['stf-fn-shift'] = True
             raise
 
         # Check for STD create times with a nanosecond value of '0'
-        if record['fn', 0]['crtime'].dt != 0:
-            if record['fn', 0]['crtime'].dt.microsecond == 0:
+        if fn_birth != 0:
+            if fn_birth.microsecond == 0:
                 record['usec-zero'] = True
+
+        if fn_modify < fn_birth:
+            record[u'likely_copy'] = True
+
+        if fn_modify < fn_access and fn_birth < fn_access:
+            record[u'likely_volmove'] = True
+
